@@ -2,6 +2,10 @@
 
 news_filter.py가 키워드로 1차 분류한 카테고리를 Gemini가 재검토/확정하고,
 2줄 요약과 1~5점의 관련도 점수를 생성한다.
+
+무료 티어는 모델당 일일 요청 수도 낮다(예: gemini-2.5-flash 하루 20회). 뉴스 1건당
+호출 1번으로는 하루치 뉴스도 처리할 수 없으므로, GEMINI_BATCH_SIZE개씩 묶어
+한 번의 API 호출로 처리한다.
 """
 from __future__ import annotations
 
@@ -14,17 +18,18 @@ import google.generativeai as genai
 from gemini_utils import call_with_retry
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+BATCH_SIZE = int(os.environ.get("GEMINI_BATCH_SIZE", "10"))
 
 CATEGORIES = ["전력시장", "LNG·가스", "에너지전환정책"]
 
 SYSTEM_PROMPT = """당신은 에너지·전력시장 전문 애널리스트의 리서치 보조원입니다.
-주어진 뉴스 항목에 대해 다음을 생성하세요:
+여러 건의 뉴스 항목이 번호가 매겨진 목록으로 주어집니다. 각 항목에 대해 다음을 생성하세요:
 1. summary: 핵심 내용을 담은 정확히 2줄 요약 (한국어, 평서체)
 2. category: 다음 중 하나 — 전력시장 / LNG·가스 / 에너지전환정책
 3. relevance: 에너지·전력시장 전문성 자산화 관점에서의 관련도, 1(낮음)~5(높음) 정수
 
-반드시 다음 JSON 형식으로만 응답하세요. 다른 텍스트를 포함하지 마세요:
-{"summary": "...", "category": "...", "relevance": 3}
+반드시 입력과 동일한 개수, 동일한 순서의 JSON 배열로만 응답하세요. 다른 텍스트를 포함하지 마세요:
+[{"summary": "...", "category": "...", "relevance": 3}, ...]
 """
 
 
@@ -33,24 +38,20 @@ def _build_model() -> genai.GenerativeModel:
     return genai.GenerativeModel(MODEL, system_instruction=SYSTEM_PROMPT)
 
 
-def summarize(entry: dict[str, Any], model: genai.GenerativeModel | None = None) -> dict[str, Any]:
-    model = model or _build_model()
+def _format_batch(entries: list[dict[str, Any]]) -> str:
+    parts = []
+    for i, entry in enumerate(entries, start=1):
+        parts.append(
+            f"[{i}]\n"
+            f"제목: {entry.get('title', '')}\n"
+            f"출처: {entry.get('source', '')}\n"
+            f"1차 분류(키워드 기반): {entry.get('category', '미분류')}\n"
+            f"본문/요약: {entry.get('summary', '')}"
+        )
+    return "\n\n".join(parts)
 
-    user_content = (
-        f"제목: {entry.get('title', '')}\n"
-        f"출처: {entry.get('source', '')}\n"
-        f"1차 분류(키워드 기반): {entry.get('category', '미분류')}\n"
-        f"본문/요약: {entry.get('summary', '')}"
-    )
 
-    response = call_with_retry(
-        model.generate_content,
-        user_content,
-        generation_config={"response_mime_type": "application/json"},
-    )
-
-    result = json.loads(response.text)
-
+def _normalize_result(entry: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
     category = result.get("category")
     if category not in CATEGORIES:
         category = entry.get("category", CATEGORIES[0])
@@ -66,6 +67,37 @@ def summarize(entry: dict[str, Any], model: genai.GenerativeModel | None = None)
     }
 
 
+def summarize_batch(
+    entries: list[dict[str, Any]], model: genai.GenerativeModel | None = None
+) -> list[dict[str, Any]]:
+    """한 번의 API 호출로 여러 뉴스 항목을 요약/분류한다."""
+    model = model or _build_model()
+
+    response = call_with_retry(
+        model.generate_content,
+        _format_batch(entries),
+        generation_config={"response_mime_type": "application/json"},
+    )
+
+    results = json.loads(response.text)
+
+    if len(results) != len(entries):
+        print(
+            f"[gemini] 경고: 응답 {len(results)}건이 요청 {len(entries)}건과 개수가 다릅니다 — "
+            "앞에서부터 매칭하고 부족분은 기본값으로 채웁니다."
+        )
+
+    normalized = [
+        _normalize_result(entry, result) for entry, result in zip(entries, results)
+    ]
+    normalized.extend(_normalize_result(entry, {}) for entry in entries[len(results):])
+    return normalized
+
+
 def summarize_all(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     model = _build_model()
-    return [summarize(entry, model) for entry in entries]
+    results: list[dict[str, Any]] = []
+    for i in range(0, len(entries), BATCH_SIZE):
+        batch = entries[i : i + BATCH_SIZE]
+        results.extend(summarize_batch(batch, model))
+    return results

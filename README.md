@@ -44,9 +44,13 @@ pip install -r requirements.txt
 export GEMINI_API_KEY=...
 ```
 
-무료 티어는 모델당 분당 요청 수(RPM)가 낮다(예: `gemini-2.5-flash` 5RPM). `src/gemini_utils.py`가
-호출 간 최소 간격을 두고 쿼터 초과(429) 시 자동 재시도한다. 기본값은 분당 4회로 제한되어 있으며,
-`GEMINI_REQUESTS_PER_MINUTE` 환경변수로 조정할 수 있다(유료 플랜 사용 시 높일 수 있음).
+무료 티어는 모델당 분당 요청 수(RPM)뿐 아니라 **일일 요청 수도 낮다**(예: `gemini-2.5-flash`
+하루 20회). 뉴스 1건당 API 호출 1번으로는 하루치 뉴스도 처리할 수 없으므로,
+`gemini_summarize.py`는 뉴스를 `GEMINI_BATCH_SIZE`개씩(기본 10건) 묶어 한 번의 호출로 처리한다.
+`src/gemini_utils.py`는 호출 간 최소 간격을 두고(기본 분당 4회, `GEMINI_REQUESTS_PER_MINUTE`로 조정)
+쿼터 초과(429) 시 자동 재시도한다 — 단, 분당 제한은 재시도로 극복 가능하지만 **일일 제한은
+같은 실행 안에서 재시도로 해결되지 않으므로** 배치 크기를 필터 통과 건수에 맞게 조정하거나
+유료 플랜으로 전환해야 한다.
 
 ## 로컬 실행
 
