@@ -1,0 +1,16 @@
+# RSS 피드 소스 목록
+# name: 화면/커밋 로그에 표시될 소스 이름
+# url:  RSS/Atom 피드 URL (실제 서비스 URL로 교체 필요 — 아래는 예시)
+#
+# 주의: 기관 RSS는 URL이 자주 바뀝니다. news_fetch.py 실행 전
+# 각 URL이 유효한 RSS를 반환하는지 확인하세요 (예: curl -I <url>).
+
+sources:
+  - name: "전기신문"
+    url: "https://www.electimes.com/rss/allArticle.xml"
+  - name: "가스신문"
+    url: "https://www.gasnews.com/rss/allArticle.xml"
+  - name: "산업통상자원부 보도자료"
+    url: "https://www.motie.go.kr/rss/motie_news.xml"
+  - name: "한국전력거래소 공지"
+    url: "https://www.kpx.or.kr/rss/notice.xml"
