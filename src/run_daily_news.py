@@ -4,7 +4,7 @@ GitHub Actions daily_news.yml 워크플로에서 호출된다.
 """
 from __future__ import annotations
 
-from claude_summarize import summarize_all
+from gemini_summarize import summarize_all
 from git_commit import commit_and_push
 from md_writer import write_all
 from news_fetch import fetch_all

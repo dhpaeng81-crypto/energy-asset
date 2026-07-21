@@ -1,7 +1,7 @@
 """분석메모(화요일 텍스트)를 지식카드 초안으로 변환한다.
 
 핵심 제약조건: "나의 판단", "판단이 틀릴 조건" 섹션은 AI가 절대 생성하지 않는다.
-Claude에게는 애초에 이 두 섹션에 대한 프롬프트를 주지 않고, 응답 스키마에도
+Gemini에게는 애초에 이 두 섹션에 대한 프롬프트를 주지 않고, 응답 스키마에도
 해당 필드를 두지 않는다. 그리고 최종 마크다운 조립 시 이 두 섹션은 항상
 코드가 직접 빈 헤더로 삽입한다 (AI 출력 경로와 완전히 분리) — 이것이
 이중 방어선이다.
@@ -15,13 +15,13 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import anthropic
+import google.generativeai as genai
 from slugify import slugify
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 KNOWLEDGE_CARDS_DIR = REPO_ROOT / "vault" / "knowledge-cards"
 
-MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 # 이 프롬프트는 "핵심 사실 / 정책 방향 / 이해관계자 / 향후 변수" 네 항목만 요청한다.
 # "나의 판단"이나 "판단이 틀릴 조건"에 해당하는 내용은 요청하지도, 응답 스키마에
@@ -87,22 +87,22 @@ def _strip_judgment_leakage(text: str) -> str:
     return text
 
 
+def _build_model() -> genai.GenerativeModel:
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    return genai.GenerativeModel(MODEL, system_instruction=SYSTEM_PROMPT)
+
+
 def generate_draft_sections(
-    memo_text: str, client: anthropic.Anthropic | None = None
+    memo_text: str, model: genai.GenerativeModel | None = None
 ) -> dict[str, str]:
-    client = client or anthropic.Anthropic()
+    model = model or _build_model()
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=1200,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": memo_text}],
+    response = model.generate_content(
+        memo_text,
+        generation_config={"response_mime_type": "application/json"},
     )
 
-    raw_text = "".join(
-        block.text for block in response.content if getattr(block, "type", None) == "text"
-    )
-    result = json.loads(raw_text)
+    result = json.loads(response.text)
 
     # 스키마에 없는 판단 관련 키가 섞여 오더라도 아래 4개 필드만 사용한다.
     return {
@@ -118,7 +118,7 @@ def write_knowledge_card(
     memo_text: str,
     source_news_stem: str,
     out_dir: Path = KNOWLEDGE_CARDS_DIR,
-    client: anthropic.Anthropic | None = None,
+    model: genai.GenerativeModel | None = None,
 ) -> Path:
     """지식카드 초안을 생성해 vault/knowledge-cards에 저장하고 경로를 반환한다.
 
@@ -126,7 +126,7 @@ def write_knowledge_card(
     memo_text: 화요일 분석메모 원문
     source_news_stem: 원본 뉴스 파일명(확장자 제외) — [[백링크]]로 연결됨
     """
-    sections = generate_draft_sections(memo_text, client)
+    sections = generate_draft_sections(memo_text, model)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{slugify(title, allow_unicode=True, max_length=60)}.md"

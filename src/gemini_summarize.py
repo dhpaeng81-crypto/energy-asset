@@ -1,6 +1,6 @@
-"""Claude API로 뉴스 항목을 요약/분류하고 관련도 점수를 매긴다.
+"""Gemini API로 뉴스 항목을 요약/분류하고 관련도 점수를 매긴다.
 
-news_filter.py가 키워드로 1차 분류한 카테고리를 Claude가 재검토/확정하고,
+news_filter.py가 키워드로 1차 분류한 카테고리를 Gemini가 재검토/확정하고,
 2줄 요약과 1~5점의 관련도 점수를 생성한다.
 """
 from __future__ import annotations
@@ -9,9 +9,9 @@ import json
 import os
 from typing import Any
 
-import anthropic
+import google.generativeai as genai
 
-MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 CATEGORIES = ["전력시장", "LNG·가스", "에너지전환정책"]
 
@@ -26,8 +26,13 @@ SYSTEM_PROMPT = """당신은 에너지·전력시장 전문 애널리스트의 �
 """
 
 
-def summarize(entry: dict[str, Any], client: anthropic.Anthropic | None = None) -> dict[str, Any]:
-    client = client or anthropic.Anthropic()
+def _build_model() -> genai.GenerativeModel:
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    return genai.GenerativeModel(MODEL, system_instruction=SYSTEM_PROMPT)
+
+
+def summarize(entry: dict[str, Any], model: genai.GenerativeModel | None = None) -> dict[str, Any]:
+    model = model or _build_model()
 
     user_content = (
         f"제목: {entry.get('title', '')}\n"
@@ -36,18 +41,12 @@ def summarize(entry: dict[str, Any], client: anthropic.Anthropic | None = None) 
         f"본문/요약: {entry.get('summary', '')}"
     )
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=400,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_content}],
+    response = model.generate_content(
+        user_content,
+        generation_config={"response_mime_type": "application/json"},
     )
 
-    raw_text = "".join(
-        block.text for block in response.content if getattr(block, "type", None) == "text"
-    )
-
-    result = json.loads(raw_text)
+    result = json.loads(response.text)
 
     category = result.get("category")
     if category not in CATEGORIES:
@@ -65,5 +64,5 @@ def summarize(entry: dict[str, Any], client: anthropic.Anthropic | None = None) 
 
 
 def summarize_all(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    client = anthropic.Anthropic()
-    return [summarize(entry, client) for entry in entries]
+    model = _build_model()
+    return [summarize(entry, model) for entry in entries]
