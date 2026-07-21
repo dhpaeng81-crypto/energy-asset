@@ -23,18 +23,20 @@ vault/
 └── .obsidian/          # Obsidian 설정
 
 src/
-├── news_fetch.py        # RSS 수집
-├── news_filter.py        # 키워드 1차 필터 + 카테고리 부여
-├── gemini_summarize.py   # Gemini API 요약/분류/관련도 점수
-├── gemini_utils.py        # Gemini rate limit(429) 스로틀/재시도 공통 유틸
-├── md_writer.py           # news-inbox에 frontmatter markdown 저장
-├── card_draft.py          # 분석메모 → 지식카드 초안 (판단 필드 코드 레벨 제외)
-├── git_commit.py          # 생성 파일 자동 커밋/푸시
-└── run_daily_news.py      # 일일 파이프라인 진입점 (fetch→filter→summarize→write→commit)
+├── news_fetch.py            # RSS 수집
+├── google_news_fallback.py  # Reuters/Bloomberg 등 공식 RSS 없는 매체용 Google News 검색 RSS 우회 수집
+├── news_filter.py            # 키워드 1차 필터 + 카테고리 부여
+├── gemini_summarize.py       # Gemini API 요약/분류/관련도 점수
+├── gemini_utils.py            # Gemini rate limit(429) 스로틀/재시도 공통 유틸
+├── md_writer.py               # news-inbox에 frontmatter markdown 저장
+├── card_draft.py              # 분석메모 → 지식카드 초안 (판단 필드 코드 레벨 제외)
+├── git_commit.py              # 생성 파일 자동 커밋/푸시
+└── run_daily_news.py          # 일일 파이프라인 진입점 (RSS+Google News→필터→요약→저장→커밋)
 
 config/
-├── rss_sources.yaml   # RSS 피드 목록 (실사용 전 URL 검증 필요)
-└── keywords.yaml      # 카테고리별 키워드
+├── rss_sources.yaml          # RSS 피드 목록 (실사용 전 URL 검증 필요)
+├── google_news_sources.yaml  # Google News 검색 우회용 매체별 쿼리 (site: 연산자)
+└── keywords.yaml             # 카테고리별 키워드
 ```
 
 ## 설치
@@ -63,6 +65,26 @@ python src/card_draft.py vault/analysis-memos/2026-07-22-메모.md \
   --title "지역별 전력가격제 도입" \
   --source-news "2026-07-21-전력시장개편안"
 ```
+
+## Google News 우회 수집 (Reuters/Bloomberg)
+
+Reuters(2020년경 공개 RSS 종료)와 Bloomberg(애초에 공개 RSS 없음)는 `news_fetch.py`의
+일반 RSS 방식으로 수집할 수 없다. `src/google_news_fallback.py`가 Google News 검색
+RSS(`news.google.com/rss/search`)를 `site:` 연산자와 함께 사용해 간접 수집하며,
+`run_daily_news.py`에서 RSS 결과와 합쳐진 뒤 동일한 필터/요약 파이프라인을 탄다.
+대상 매체·검색어는 `config/google_news_sources.yaml`에서 관리한다.
+
+**반드시 인지할 리스크** (`google_news_fallback.py` 상단 docstring 참고):
+- 비공식 우회이며 Google이 URL 패턴/정책을 바꾸면 언제든 깨질 수 있다. 프로덕션에 넣기 전
+  로컬에서 `curl -sI "https://news.google.com/rss/search?q=site:reuters.com+energy&hl=en-US&gl=US&ceid=US:en"`로
+  재확인할 것.
+- Google News RSS의 `<link>`는 대부분 Google 리다이렉트 URL이라 `resolve_original_url()`이
+  best-effort로 실제 매체 원문 URL을 따라가지만, 항상 성공하지는 않는다.
+- **저작권**: 제목·요약·링크만 수집하는 용도로 제한한다. 본문은 절대 스크래핑하지 않으며,
+  카드/콘텐츠 작성 시에도 반드시 자기 언어로 paraphrase해야 한다.
+- 이 우회가 불안정해지면 Reuters Connect, Bloomberg API 같은 공식 유료 구독 전환을 검토한다.
+- 워크플로에서 Google News 수집이 실패해도(`run_daily_news.collect_entries()`가 예외를 흡수)
+  RSS 수집 결과는 그대로 유지되고 파이프라인이 죽지 않는다.
 
 ## GitHub Actions
 

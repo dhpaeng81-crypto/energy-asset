@@ -1,0 +1,15 @@
+# Google News 검색 RSS(news.google.com/rss/search)를 site: 연산자와 함께 사용해
+# 공식 공개 RSS가 없는 매체(Reuters, Bloomberg 등)를 간접적으로 수집한다.
+#
+# 반드시 src/google_news_fallback.py 상단 docstring을 읽을 것 — 비공식 우회,
+# Google 정책 변경 시 깨질 수 있음, 저작권(본문 스크래핑 금지, 제목/요약/링크만
+# 수집) 등 리스크가 명시되어 있다.
+#
+# name:  화면/커밋 로그에 표시될 소스 이름
+# query: Google News 검색 쿼리 (site: 연산자 + 키워드)
+
+sources:
+  - name: "Reuters"
+    query: "site:reuters.com (energy OR LNG OR electricity OR power market)"
+  - name: "Bloomberg"
+    query: "site:bloomberg.com (energy OR LNG OR electricity OR power market)"
