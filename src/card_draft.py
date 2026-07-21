@@ -18,6 +18,8 @@ from typing import Any
 import google.generativeai as genai
 from slugify import slugify
 
+from gemini_utils import call_with_retry
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 KNOWLEDGE_CARDS_DIR = REPO_ROOT / "vault" / "knowledge-cards"
 
@@ -97,7 +99,8 @@ def generate_draft_sections(
 ) -> dict[str, str]:
     model = model or _build_model()
 
-    response = model.generate_content(
+    response = call_with_retry(
+        model.generate_content,
         memo_text,
         generation_config={"response_mime_type": "application/json"},
     )

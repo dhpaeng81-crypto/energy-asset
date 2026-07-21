@@ -11,6 +11,8 @@ from typing import Any
 
 import google.generativeai as genai
 
+from gemini_utils import call_with_retry
+
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 CATEGORIES = ["전력시장", "LNG·가스", "에너지전환정책"]
@@ -41,7 +43,8 @@ def summarize(entry: dict[str, Any], model: genai.GenerativeModel | None = None)
         f"본문/요약: {entry.get('summary', '')}"
     )
 
-    response = model.generate_content(
+    response = call_with_retry(
+        model.generate_content,
         user_content,
         generation_config={"response_mime_type": "application/json"},
     )

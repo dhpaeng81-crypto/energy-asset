@@ -26,6 +26,7 @@ src/
 ├── news_fetch.py        # RSS 수집
 ├── news_filter.py        # 키워드 1차 필터 + 카테고리 부여
 ├── gemini_summarize.py   # Gemini API 요약/분류/관련도 점수
+├── gemini_utils.py        # Gemini rate limit(429) 스로틀/재시도 공통 유틸
 ├── md_writer.py           # news-inbox에 frontmatter markdown 저장
 ├── card_draft.py          # 분석메모 → 지식카드 초안 (판단 필드 코드 레벨 제외)
 ├── git_commit.py          # 생성 파일 자동 커밋/푸시
@@ -42,6 +43,10 @@ config/
 pip install -r requirements.txt
 export GEMINI_API_KEY=...
 ```
+
+무료 티어는 모델당 분당 요청 수(RPM)가 낮다(예: `gemini-2.5-flash` 5RPM). `src/gemini_utils.py`가
+호출 간 최소 간격을 두고 쿼터 초과(429) 시 자동 재시도한다. 기본값은 분당 4회로 제한되어 있으며,
+`GEMINI_REQUESTS_PER_MINUTE` 환경변수로 조정할 수 있다(유료 플랜 사용 시 높일 수 있음).
 
 ## 로컬 실행
 
