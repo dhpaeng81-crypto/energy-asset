@@ -1,0 +1,82 @@
+# RSS 피드 소스 목록 (검증 완료, 2026-07-21 기준)
+# name: 화면/커밋 로그에 표시될 소스 이름
+# url:  RSS/Atom 피드 URL
+# category: 전력시장 / LNG·가스 / 에너지전환정책 / 종합경제
+# verified: true = 실제 fetch로 유효한 XML 응답 확인함 / false = 미검증, 별도 확인 필요
+#
+# 주의: 정부기관 RSS는 조직개편(부처명 변경 등)에 따라 URL이 자주 바뀝니다.
+# 2026년 정부조직 개편으로 "산업통상자원부"는 "산업통상부"로,
+# 에너지·기후 정책은 신설된 "기후에너지환경부"로 분리되었습니다.
+# news_fetch.py 실행 전 curl -I <url> 또는 별도 헬스체크로 재검증 권장.
+
+sources:
+  # --- 업계지 (검증완료) ---
+  - name: "전기신문"
+    url: "https://www.electimes.com/rss/allArticle.xml"
+    category: "전력시장"
+    verified: true
+
+  - name: "가스신문"
+    url: "https://www.gasnews.com/rss/allArticle.xml"
+    category: "LNG·가스"
+    verified: true
+
+  # --- 정부기관 (정책브리핑 korea.kr 경유, 검증완료) ---
+  # 기존 motie.go.kr/rss/motie_news.xml 은 404 (부처 개편으로 폐기됨).
+  # kpx.or.kr/rss/notice.xml 은 자체 방화벽(WAF)이 자동화 접근을 차단하여 미검증.
+  # 대신 대한민국 정책브리핑(korea.kr)이 부처별로 안정적인 RSS를 제공하여 이걸 채택.
+  - name: "산업통상부 (정책브리핑)"
+    url: "https://www.korea.kr/rss/dept_motir.xml"
+    category: "에너지전환정책"
+    verified: true
+    note: "옛 산업통상자원부. 2026년 조직개편으로 명칭 변경(motie→motir)"
+
+  - name: "기후에너지환경부 (정책브리핑)"
+    url: "https://www.korea.kr/rss/dept_mcee.xml"
+    category: "에너지전환정책"
+    verified: true
+    note: "2026년 신설. 에너지·기후·환경 정책 소관. 전력공기업 구조개편, 재생에너지, 풍력·태양광 안전관리 등 관련도 높은 기사 다수"
+
+  # --- 종합경제지 (에너지 섹션 없음, 키워드 필터 필수) ---
+  - name: "한국경제 경제"
+    url: "https://www.hankyung.com/feed/economy"
+    category: "종합경제"
+    verified: false
+    note: "일반 경제 전체 피드. 전력/LNG/에너지 키워드로 반드시 1차 필터링 후 사용"
+
+  # --- 확인 필요 / 보류 ---
+  - name: "한국전력거래소 공지"
+    url: "https://www.kpx.or.kr/rss/notice.xml"
+    category: "전력시장"
+    verified: false
+    note: "WAF가 자동화 요청을 차단(2026-07-21 확인). 스크립트에 User-Agent/Referer 조정 또는 공식 API 문의 필요. 정상 작동 확인 전까지 파이프라인에서 제외 권장"
+
+  # --- 해외: 정부/국제기구 (미국 정책·시장 동향) ---
+  - name: "US DOE (Department of Energy) Energy News"
+    url: "https://www.energy.gov/rss/energygov/2193718"
+    category: "에너지전환정책"
+    verified: true
+    note: "fetch로 application/rss+xml 확인. LNG 수출, 전력망, 원자력, 정책 발표 등 포괄. 현재(2026) 트럼프 행정부의 'Energy Dominance' 기조 하 보도자료 위주라 정치적 논조가 실림을 감안해서 읽을 것"
+
+  - name: "EIA Today in Energy"
+    url: "https://www.eia.gov/rss/todayinenergy.xml"
+    category: "종합경제"
+    verified: false
+    note: "EIA 공식 RSS 안내 페이지(eia.gov/tools/rssfeeds/)에 문서화된 URL. 내 도구는 robots.txt 차단으로 직접 fetch 검증은 못했으나(일반 크롤러 차단이지 RSS reader 차단과는 다를 수 있음), 공식 문서 기준으로 신뢰도 높음. news_fetch.py 첫 실행 시 반드시 재확인"
+
+  - name: "IEA (International Energy Agency) News"
+    url: "MANUAL_CHECK_REQUIRED"
+    category: "에너지전환정책"
+    verified: false
+    note: "공식 공개 RSS를 찾지 못함(iea.org/news 페이지에 피드 링크 미확인). IEA는 뉴스레터(격주, energy-snapshot) 중심으로 운영 중. 대안: 뉴스레터 구독 후 이메일 파싱, 또는 iea.org/news 페이지를 주기적으로 스크래핑(단, 이용약관 확인 필요)"
+
+  # Reuters/Bloomberg: 공식 공개 RSS가 없어 여기서는 다루지 않는다.
+  # config/google_news_sources.yaml + src/google_news_fallback.py가 Google News
+  # 검색 RSS(site: 연산자) 우회로 전담 수집한다.
+
+# --- 향후 추가 검토 대상 (아직 RSS 미확인) ---
+# - 한국가스공사 보도자료
+# - 한국전력공사 보도자료
+# - 한국에너지공단
+# 위 기관들은 검색 결과 공식 RSS 주소를 찾지 못함. 정부24(gov.kr/portal/rss) 통합 RSS 디렉토리에서
+# 재확인하거나, 각 기관 사이트의 "RSS" 메뉴를 직접 방문해 URL을 얻어야 함.
