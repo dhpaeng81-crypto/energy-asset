@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import html
 from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path
@@ -57,36 +58,58 @@ def collect_unread(since: date, inbox_dir: Path = NEWS_INBOX_DIR) -> list[dict[s
     return items
 
 
-def build_digest(items: list[dict[str, Any]], today: date) -> str:
+def _render_item(item: dict[str, Any]) -> str:
+    title = html.escape(str(item.get("title", item["_stem"])))
+    url = html.escape(str(item.get("source_url", "")))
+    stars = STARS.get(item.get("relevance", 0), "")
+    category = html.escape(str(item.get("category", "미분류")))
+    link = f'<a href="{url}">{title}</a>' if url else title
+    return f'<li><span class="stars">{stars}</span> {link} <span class="category">{category}</span></li>'
+
+
+def build_digest_html(items: list[dict[str, Any]], today: date) -> str:
     by_category: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for item in items:
         by_category[item.get("category", "미분류")].append(item)
 
-    lines = [
-        "---",
-        f"date: {today.isoformat()}",
-        "type: weekly-digest",
-        "---",
-        "",
-        f"# 주간 다이제스트 ({today.isoformat()})",
-        "",
-        f"미검토 뉴스 {len(items)}건 — 관련도순으로 정리했습니다. "
-        "이번 주 파고들 이슈는 직접 골라주세요.",
-        "",
-    ]
-
+    sections = []
     for category in sorted(
         by_category, key=lambda c: -max(i.get("relevance", 0) for i in by_category[c])
     ):
-        lines.append(f"## {category}")
-        lines.append("")
-        for item in sorted(by_category[category], key=lambda i: -i.get("relevance", 0)):
-            stars = STARS.get(item.get("relevance", 0), "")
-            title = item.get("title", item["_stem"])
-            lines.append(f"- {stars} [[{item['_stem']}|{title}]]")
-        lines.append("")
+        items_html = "\n".join(
+            _render_item(item)
+            for item in sorted(by_category[category], key=lambda i: -i.get("relevance", 0))
+        )
+        sections.append(
+            f"<section><h2>{html.escape(category)}</h2><ul>{items_html}</ul></section>"
+        )
 
-    return "\n".join(lines)
+    return f"""<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>주간 다이제스트 ({today.isoformat()})</title>
+<style>
+  body {{ font-family: -apple-system, "Noto Sans KR", sans-serif; max-width: 720px;
+          margin: 40px auto; padding: 0 16px; line-height: 1.6; color: #222; }}
+  h1 {{ font-size: 1.4rem; }}
+  h2 {{ font-size: 1.1rem; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-top: 32px; }}
+  ul {{ list-style: none; padding-left: 0; }}
+  li {{ margin: 10px 0; }}
+  .stars {{ color: #d9a441; margin-right: 8px; }}
+  .category {{ color: #888; font-size: 0.85rem; margin-left: 8px; }}
+  a {{ color: #1a5fb4; text-decoration: none; }}
+  a:hover {{ text-decoration: underline; }}
+  .meta {{ color: #666; font-size: 0.9rem; }}
+</style>
+</head>
+<body>
+<h1>주간 다이제스트 ({today.isoformat()})</h1>
+<p class="meta">미검토 뉴스 {len(items)}건 — 관련도순으로 정리했습니다. 이번 주 파고들 이슈는 직접 골라주세요.</p>
+{"".join(sections)}
+</body>
+</html>
+"""
 
 
 def generate_weekly_digest(
@@ -103,8 +126,8 @@ def generate_weekly_digest(
         return None
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{today.isoformat()}-주간다이제스트.md"
-    path.write_text(build_digest(items, today), encoding="utf-8")
+    path = out_dir / f"{today.isoformat()}-주간다이제스트.html"
+    path.write_text(build_digest_html(items, today), encoding="utf-8")
     print(f"[weekly_digest] 생성: {path} ({len(items)}건)")
     return path
 

@@ -82,10 +82,11 @@ python src/memo_scaffold.py "2026-07-21-전력시장-개편안-발표"
 그 앞뒤의 반복 작업(정렬/집계, 사실관계 옮겨 적기)만 자동화한다.
 
 - **`weekly_digest.py`**: `news-inbox`에서 `status: unread`이고 최근 7일 이내인 뉴스를
-  모아 카테고리별·관련도순으로 정리한 노트를 `vault/weekly-digests/`에 생성한다.
-  순위·링크만 나열할 뿐 "이걸 고르세요" 같은 판단은 넣지 않는다. `run_weekly_digest.py`가
-  생성 후 자동 커밋까지 하며, `.github/workflows/weekly_digest.yml`이 매주 월요일
-  07:00(KST)에 자동 실행한다.
+  모아 카테고리별·관련도순으로 정리한 **HTML** 페이지를 `vault/weekly-digests/`에 생성한다
+  (Obsidian 밖에서도 바로 읽기 편하도록 각 항목이 원문 `source_url`로 직접 연결되는
+  클릭 가능한 링크). 순위·링크만 나열할 뿐 "이걸 고르세요" 같은 판단은 넣지 않는다.
+  `run_weekly_digest.py`가 생성 후 자동 커밋까지 하며, `.github/workflows/weekly_digest.yml`이
+  매주 월요일 07:00(KST)에 자동 실행한다.
 - **`memo_scaffold.py`**: 다이제스트에서 고른 뉴스 파일명을 넣으면, 그 뉴스의 제목·요약·
   `[[백링크]]`가 미리 채워진 분석메모 틀을 `vault/analysis-memos/`에 만든다. "나의 분석"
   섹션은 항상 빈 채로 남으며, 새로운 분석을 생성하지 않고 이미 news-inbox에 있는 요약을
