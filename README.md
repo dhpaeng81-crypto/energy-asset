@@ -16,7 +16,8 @@ AI는 수집·분류·초안까지만 담당한다. "나의 판단"과 "판단�
 vault/
 ├── news-inbox/        # 뉴스 자동 수집함 (news_fetch → filter → summarize → md_writer)
 ├── knowledge-cards/    # 지식DB 카드 (card_draft.py 결과물)
-├── analysis-memos/     # 화요일 분석메모 원본 (사용자 작성)
+├── analysis-memos/     # 화요일 분석메모 원본 (사용자 작성, memo_scaffold.py로 틀만 생성 가능)
+├── weekly-digests/     # 주간 다이제스트 (weekly_digest.py 결과물)
 ├── flagship-reports/   # 분기 플래그십 보고서
 ├── templates/          # Obsidian 템플릿 (news-item.md, knowledge-card.md)
 ├── dashboards/         # Dataview 쿼리 모음 (queries.md)
@@ -29,6 +30,9 @@ src/
 ├── gemini_summarize.py       # Gemini API 요약/분류/관련도 점수
 ├── gemini_utils.py            # Gemini rate limit(429) 스로틀/재시도 공통 유틸
 ├── md_writer.py               # news-inbox에 frontmatter markdown 저장
+├── weekly_digest.py            # 미검토 뉴스를 관련도순으로 정리한 주간 다이제스트 생성
+├── run_weekly_digest.py         # 주간 다이제스트 진입점 (생성→커밋)
+├── memo_scaffold.py             # 선택한 뉴스 항목으로 분석메모 틀 생성 (수동 CLI)
 ├── card_draft.py              # 분석메모 → 지식카드 초안 (판단 필드 코드 레벨 제외)
 ├── git_commit.py              # 생성 파일 자동 커밋/푸시
 └── run_daily_news.py          # 일일 파이프라인 진입점 (RSS+Google News→필터→요약→저장→커밋)
@@ -64,7 +68,29 @@ python src/run_daily_news.py
 python src/card_draft.py vault/analysis-memos/2026-07-22-메모.md \
   --title "지역별 전력가격제 도입" \
   --source-news "2026-07-21-전력시장개편안"
+
+# 주간 다이제스트 수동 생성
+python src/run_weekly_digest.py
+
+# 분석메모 틀 생성 (news-inbox 파일명을 확장자 없이 지정)
+python src/memo_scaffold.py "2026-07-21-전력시장-개편안-발표"
 ```
+
+## 월요일/화요일 루틴 보조 (다이제스트·메모 스캐폴드)
+
+"무엇을 고를지"와 "어떻게 분석할지"는 항상 사람이 직접 한다 — 이 두 스크립트는
+그 앞뒤의 반복 작업(정렬/집계, 사실관계 옮겨 적기)만 자동화한다.
+
+- **`weekly_digest.py`**: `news-inbox`에서 `status: unread`이고 최근 7일 이내인 뉴스를
+  모아 카테고리별·관련도순으로 정리한 노트를 `vault/weekly-digests/`에 생성한다.
+  순위·링크만 나열할 뿐 "이걸 고르세요" 같은 판단은 넣지 않는다. `run_weekly_digest.py`가
+  생성 후 자동 커밋까지 하며, `.github/workflows/weekly_digest.yml`이 매주 월요일
+  07:00(KST)에 자동 실행한다.
+- **`memo_scaffold.py`**: 다이제스트에서 고른 뉴스 파일명을 넣으면, 그 뉴스의 제목·요약·
+  `[[백링크]]`가 미리 채워진 분석메모 틀을 `vault/analysis-memos/`에 만든다. "나의 분석"
+  섹션은 항상 빈 채로 남으며, 새로운 분석을 생성하지 않고 이미 news-inbox에 있는 요약을
+  그대로 옮겨 적을 뿐이다 — 화요일 메모 작성의 시작 마찰만 줄이는 용도다. 자동화 워크플로에는
+  연결하지 않았다(어떤 뉴스로 메모를 쓸지는 사람이 결정해야 하므로 수동 CLI로만 제공).
 
 ## Google News 우회 수집 (Reuters/Bloomberg)
 
@@ -89,8 +115,14 @@ RSS(`news.google.com/rss/search`)를 `site:` 연산자와 함께 사용해 간�
 ## GitHub Actions
 
 `.github/workflows/daily_news.yml`이 매일 07:00(KST)에 뉴스 파이프라인을 실행하고
-결과를 자동 커밋/푸시한다. 저장소 Settings → Secrets에 `GEMINI_API_KEY`를 등록해야 한다.
-수동 실행은 Actions 탭에서 `workflow_dispatch`로 가능하다.
+결과를 자동 커밋/푸시한다. `.github/workflows/weekly_digest.yml`이 매주 월요일
+07:00(KST)에 주간 다이제스트를 생성한다. 저장소 Settings → Secrets에 `GEMINI_API_KEY`를
+등록해야 한다(다이제스트는 API 호출이 없어 필요 없음). 수동 실행은 Actions 탭에서
+`workflow_dispatch`로 가능하다.
+
+두 워크플로 모두 `schedule` 트리거는 **`main` 브랜치에 있는 워크플로 파일 기준으로만
+동작**한다 — feature 브랜치에만 있는 상태에서는 자동 실행되지 않으니, 반드시 `main`에
+머지된 뒤 예정된 시각을 기다리거나 `workflow_dispatch`로 수동 확인할 것.
 
 ## Obsidian 연결
 

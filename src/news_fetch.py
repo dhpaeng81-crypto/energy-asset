@@ -12,6 +12,8 @@ from typing import Any
 import feedparser
 import yaml
 
+from text_utils import strip_html
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RSS_SOURCES_PATH = REPO_ROOT / "config" / "rss_sources.yaml"
 
@@ -33,9 +35,9 @@ def fetch_source(source: dict[str, str]) -> list[dict[str, Any]]:
     for entry in parsed.entries:
         entries.append(
             {
-                "title": entry.get("title", "").strip(),
+                "title": strip_html(entry.get("title", "")),
                 "link": entry.get("link", "").strip(),
-                "summary": entry.get("summary", entry.get("description", "")).strip(),
+                "summary": strip_html(entry.get("summary", entry.get("description", ""))),
                 "published": entry.get("published", entry.get("updated", "")),
                 "source": source["name"],
             }

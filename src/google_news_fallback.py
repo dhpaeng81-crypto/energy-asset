@@ -35,6 +35,8 @@ import feedparser
 import requests
 import yaml
 
+from text_utils import strip_html
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("google_news_fallback")
 
@@ -98,13 +100,13 @@ def fetch_source_via_google_news(
         items.append(
             {
                 "source": source_name,
-                "title": entry.get("title", "").strip(),
+                "title": strip_html(entry.get("title", "")),
                 "google_news_url": google_link,
                 "resolved_url": resolved_url,
                 "published": entry.get("published", ""),
                 # summary는 Google이 재구성한 스니펫. 원문 그대로 저장하지 말고
                 # 카드/콘텐츠 작성 단계에서 반드시 paraphrase 해서 사용할 것.
-                "summary_snippet": entry.get("summary", "")[:300],
+                "summary_snippet": strip_html(entry.get("summary", ""))[:300],
             }
         )
 
