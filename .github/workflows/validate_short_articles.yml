@@ -1,0 +1,27 @@
+name: Validate Short Articles
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "vault/short-articles/**"
+  pull_request:
+    paths:
+      - "vault/short-articles/**"
+  workflow_dispatch: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install PyYAML
+
+      - name: Validate publish gate
+        run: python src/validate_short_articles.py

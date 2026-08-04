@@ -28,3 +28,19 @@ SORT length(file.inlinks) DESC
 ```
 
 세 번째 쿼리가 카드의 재사용률(질 지표)을 별도 스크립트 없이 자동으로 보여줍니다.
+
+## 발행 게이트 미통과 상태로 남아있는 draft (발행 실수 방지)
+
+```dataview
+LIST
+FROM "short-articles"
+WHERE status = "draft" AND opinion_ratio_check = false
+```
+
+## 분기말 승격 후보 (published인데 지식카드로 안 이어진 것)
+
+```dataview
+LIST
+FROM "short-articles"
+WHERE status = "published" AND !source_card
+```
