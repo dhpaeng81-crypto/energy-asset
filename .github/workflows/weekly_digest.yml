@@ -2,8 +2,8 @@ name: Weekly Digest
 
 on:
   schedule:
-    # 매주 일요일 22:00 UTC = 월요일 07:00 KST
-    - cron: "0 22 * * 0"
+    # 매주 목요일 22:00 UTC = 금요일 07:00 KST
+    - cron: "0 22 * * 4"
   workflow_dispatch: {}
 
 permissions:
