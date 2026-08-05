@@ -1,0 +1,64 @@
+name: Generate Short Article
+
+on:
+  workflow_dispatch:
+    inputs:
+      news_stem:
+        description: "vault/news-inbox 파일명(확장자 제외)"
+        required: true
+      title:
+        description: "아티클 제목"
+        required: true
+      source_card:
+        description: "연관 지식카드 파일명(확장자 제외, 선택)"
+        required: false
+      opinion_text:
+        description: "참고용 의견 메모(선택, 요약 방향 참고용 — 결과물에는 들어가지 않음)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure git identity
+        run: |
+          git config user.name "energy-asset-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Generate short article
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NEWS_STEM: ${{ inputs.news_stem }}
+          TITLE: ${{ inputs.title }}
+          SOURCE_CARD: ${{ inputs.source_card }}
+          OPINION_TEXT: ${{ inputs.opinion_text }}
+        run: |
+          args=("$NEWS_STEM" --title "$TITLE")
+          if [ -n "$SOURCE_CARD" ]; then
+            args+=(--source-card "$SOURCE_CARD")
+          fi
+          if [ -n "$OPINION_TEXT" ]; then
+            printf '%s' "$OPINION_TEXT" > /tmp/opinion.txt
+            args+=(--opinion-file /tmp/opinion.txt)
+          fi
+          python src/short_article_draft.py "${args[@]}"
+
+      - name: Commit result
+        env:
+          TITLE: ${{ inputs.title }}
+        run: |
+          python src/git_commit.py vault/short-articles --message "short article 초안: $TITLE"

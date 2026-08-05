@@ -6,7 +6,6 @@ GitHub Actions 워크플로에서 사용하며, 로컬에서도 동일하게 동
 from __future__ import annotations
 
 import subprocess
-import sys
 from datetime import date
 from pathlib import Path
 
@@ -38,5 +37,12 @@ def commit_and_push(paths: list[Path], message: str | None = None) -> bool:
 
 
 if __name__ == "__main__":
-    target_paths = [Path(p) for p in sys.argv[1:]] or [REPO_ROOT / "vault"]
-    commit_and_push(target_paths)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="지정된 경로를 git에 add/commit/push")
+    parser.add_argument("paths", nargs="*", help="커밋할 경로 (기본: vault/ 전체)")
+    parser.add_argument("--message", help="커밋 메시지 (기본: '뉴스 자동 수집: 오늘 날짜')")
+    args = parser.parse_args()
+
+    target_paths = [Path(p) for p in args.paths] or [REPO_ROOT / "vault"]
+    commit_and_push(target_paths, args.message)
