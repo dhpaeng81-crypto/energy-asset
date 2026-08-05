@@ -100,7 +100,7 @@ python src/validate_short_articles.py
   (Obsidian 밖에서도 바로 읽기 편하도록 각 항목이 원문 `source_url`로 직접 연결되는
   클릭 가능한 링크). 순위·링크만 나열할 뿐 "이걸 고르세요" 같은 판단은 넣지 않는다.
   `run_weekly_digest.py`가 생성 후 자동 커밋까지 하며, `.github/workflows/weekly_digest.yml`이
-  매주 월요일 07:00(KST)에 자동 실행한다.
+  매주 금요일 07:00(KST)에 자동 실행한다.
   - **선별**: RSS+Google News 중복 수집으로 같은 제목의 기사가 여러 번 들어오는 경우가 많아
     제목 기준으로 중복을 제거하고, 관련도(`DIGEST_MIN_RELEVANCE`, 기본 4점 이상)로 걸러낸다.
     카테고리별로도 너무 길어지지 않도록 관련도 상위 `DIGEST_MAX_PER_CATEGORY`(기본 15건)만
@@ -164,7 +164,7 @@ RSS(`news.google.com/rss/search`)를 `site:` 연산자와 함께 사용해 간�
 ## GitHub Actions
 
 `.github/workflows/daily_news.yml`이 매일 07:00(KST)에 뉴스 파이프라인을 실행하고
-결과를 자동 커밋/푸시한다. `.github/workflows/weekly_digest.yml`이 매주 월요일
+결과를 자동 커밋/푸시한다. `.github/workflows/weekly_digest.yml`이 매주 금요일
 07:00(KST)에 주간 다이제스트를 생성한다. `.github/workflows/validate_short_articles.yml`은
 `vault/short-articles/` 변경이 `main`에 push되거나 PR에 포함될 때마다 발행 게이트를
 검증한다(API 호출이 없어 `PyYAML`만 설치, 가장 가벼움). 저장소 Settings → Secrets에
