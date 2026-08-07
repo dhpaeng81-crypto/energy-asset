@@ -11,9 +11,29 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+MAX_PUSH_RETRIES = 3
+
 
 def _run(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(args, cwd=REPO_ROOT, check=True, capture_output=True, text=True)
+
+
+def _push_with_retry() -> None:
+    """다른 워크플로/사람이 같은 브랜치에 먼저 push해서 non-fast-forward로 실패하면
+    rebase 후 재시도한다 (daily_news/weekly_digest가 비슷한 시각에 겹치는 경우 대비)."""
+    for attempt in range(1, MAX_PUSH_RETRIES + 1):
+        try:
+            _run(["git", "push"])
+            return
+        except subprocess.CalledProcessError as exc:
+            if attempt == MAX_PUSH_RETRIES:
+                raise
+            print(
+                f"[git_commit] push 실패 — 원격에 새 커밋이 있을 수 있어 rebase 후 재시도 "
+                f"({attempt}/{MAX_PUSH_RETRIES})"
+            )
+            print(exc.stderr)
+            _run(["git", "pull", "--rebase", "--autostash"])
 
 
 def commit_and_push(paths: list[Path], message: str | None = None) -> bool:
@@ -31,7 +51,7 @@ def commit_and_push(paths: list[Path], message: str | None = None) -> bool:
 
     commit_message = message or f"뉴스 자동 수집: {date.today().isoformat()}"
     _run(["git", "commit", "-m", commit_message])
-    _run(["git", "push"])
+    _push_with_retry()
     print(f"[git_commit] 커밋/푸시 완료: {commit_message}")
     return True
 
