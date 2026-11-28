@@ -1,0 +1,10 @@
+---
+date: 2026-08-13
+title: "Energia Costa Azul, Mexico's second LNG terminal, shipped first cargo"
+source_url: https://www.eia.gov/todayinenergy/detail.php?id=67884
+category: LNG·가스
+relevance: 4
+status: unread
+---
+
+멕시코의 두 번째 LNG 수출 시설인 에네르기아 코스타 아술이 지난 7월 8일 첫 화물을 선적하여 멕시코의 LNG 수출 용량을 3배로 늘렸다. 이 시설은 태평양 연안에 위치해 아시아 수입국으로의 운송 경로가 짧아 북미 태평양 연안 수출 역량을 증대시킨다.
